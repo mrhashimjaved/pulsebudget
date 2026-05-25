@@ -191,11 +191,17 @@ async function loadCloudState() {
   } else {
     state = structuredClone(starterState);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    await supabaseClient.from(SUPABASE_TABLE).insert({
+    const { error: insertError } = await supabaseClient.from(SUPABASE_TABLE).insert({
       user_id: activeSession.user.id,
       state,
       updated_at: new Date().toISOString()
     });
+
+    if (insertError) {
+      isHydratingCloud = false;
+      setStorageStatus("error", "Could not create your cloud profile. Try refreshing the page.");
+      return;
+    }
   }
 
   isHydratingCloud = false;
@@ -217,10 +223,14 @@ async function initCloudStorage() {
     await loadCloudState();
   }
 
-  supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
     activeSession = session;
     updateAuthUi();
-    if (session) await loadCloudState();
+    if (session) {
+      setTimeout(() => {
+        loadCloudState();
+      }, 0);
+    }
   });
 }
 
@@ -534,6 +544,7 @@ function bindEvents() {
       return;
     }
 
+    setStorageStatus("local", "Signing in...");
     const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) setStorageStatus("error", error.message);
   });
@@ -551,6 +562,7 @@ function bindEvents() {
       return;
     }
 
+    setStorageStatus("local", "Creating account...");
     const { error } = await supabaseClient.auth.signUp({
       email,
       password,
