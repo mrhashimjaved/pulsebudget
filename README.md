@@ -121,6 +121,12 @@ https://github.com/mrhashimjaved/pulsebudget.git
 The GitHub Pages workflow deploys whenever `main` is pushed.
 The workflow installs dependencies, runs `npm run build`, and uploads the generated `dist/` folder.
 
+GitHub Pages must be configured as:
+
+`Settings` -> `Pages` -> `Build and deployment` -> `Source` -> `GitHub Actions`
+
+If the live site shows a blank page and the HTML contains `/src/main.jsx`, Pages is still serving the raw branch files instead of the Vite build artifact. Select `GitHub Actions`, then rerun the `Deploy to GitHub Pages` workflow or push a new commit to `main`.
+
 Normal deploy flow:
 
 ```powershell
