@@ -31,6 +31,10 @@ const createId = () => {
   return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 };
 
+function appUrl() {
+  return `${window.location.origin}${window.location.pathname}`;
+}
+
 function escapeHtml(value) {
   return String(value || "").replace(/[&<>"']/g, (char) => {
     return {
@@ -130,6 +134,22 @@ function setAppVisibility(isSignedIn) {
   document.querySelector("#app-shell").classList.toggle("hidden", !isSignedIn);
 }
 
+function applyAuthMessageFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const error = params.get("error_description") || hashParams.get("error_description");
+  const type = params.get("type") || hashParams.get("type");
+
+  if (error) {
+    setStorageStatus("error", error.replace(/\+/g, " "));
+    return;
+  }
+
+  if (type === "signup" || type === "email_change" || type === "recovery") {
+    setStorageStatus("cloud", "Email confirmed. You can sign in now.");
+  }
+}
+
 function updateAuthUi() {
   const form = document.querySelector("#auth-form");
   const signOut = document.querySelector("#sign-out");
@@ -140,6 +160,7 @@ function updateAuthUi() {
     signOut.classList.add("hidden");
     setAppVisibility(false);
     setStorageStatus("local", "Add Supabase keys in app-config.js to enable permanent cloud storage.");
+    applyAuthMessageFromUrl();
     return;
   }
 
@@ -154,6 +175,7 @@ function updateAuthUi() {
     signOut.classList.add("hidden");
     setAppVisibility(false);
     setStorageStatus("local", "Sign in to sync this budget across devices.");
+    applyAuthMessageFromUrl();
   }
 }
 
@@ -540,7 +562,13 @@ function bindEvents() {
       return;
     }
 
-    const { error } = await supabaseClient.auth.signUp({ email, password });
+    const { error } = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: appUrl()
+      }
+    });
     if (error) {
       setStorageStatus("error", error.message);
     } else {
