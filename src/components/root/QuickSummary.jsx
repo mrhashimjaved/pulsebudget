@@ -1,10 +1,11 @@
 import { currency } from "../../lib/formatters.js";
 
-export function QuickSummary({ email, income, onIncomeChange, summary }) {
+export function QuickSummary({ email, summary }) {
   const metrics = [
     ["Income", summary.income],
     ["Bills", summary.bills],
     ["Discretionary", summary.discretionary],
+    ["Savings goals", summary.savings],
     ["Planned", summary.planned]
   ];
 
@@ -15,11 +16,6 @@ export function QuickSummary({ email, income, onIncomeChange, summary }) {
         <h2 className="text-xl font-black">Monthly control</h2>
         <p className="text-sm text-muted">{email}</p>
       </div>
-
-      <label className="grid gap-2 text-sm font-black text-muted">
-        Monthly income
-        <input value={income} onChange={(event) => onIncomeChange(event.target.value)} type="number" min="0" />
-      </label>
 
       <div className="grid grid-cols-2 gap-3">
         {metrics.map(([label, value]) => (

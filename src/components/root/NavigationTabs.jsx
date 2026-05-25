@@ -1,4 +1,4 @@
-const tabs = ["Overview", "Budgets", "Planned", "Trends"];
+const tabs = ["Overview", "Budgets", "Planned", "Trends", "Config", "Settings"];
 
 export function NavigationTabs({ activeTab, onSelectTab }) {
   return (

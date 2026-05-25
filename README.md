@@ -19,20 +19,26 @@ Local repository:
 - Confirmation emails are sent through Brevo SMTP.
 - The app uses PKR as the display currency.
 - Users only see the login/create-account screen until they sign in.
-- After login, users can manage income, budgets, expenses, planned expenses, and trends.
-- The `Clear account` button resets the signed-in user's finance data to zero and syncs that zero state to Supabase.
+- After login, users can manage income, budgets, expenses, planned expenses, trends, Config, and Settings.
+- Expenses are stored in the Supabase `finance_transactions` table.
+- The Settings tab contains a password-confirmed `Hard Reset Account` option.
 
 ## Features
 
 - Email/password signup and login.
 - Account-gated dashboard.
-- Monthly income tracking.
+- Hierarchical dashboard inspired by Quicken Simplifi Flow.
+- Monthly income tracking through the Config tab.
 - Expense entry with amount, category, date, and note.
 - Category budgets.
-- Planned expense allocation.
+- Planned expense allocation with amount, category, goal, and date.
 - Remaining available budget calculation.
 - Recent expense list.
 - Six-month spending trend chart.
+- Recharts-powered trend charts.
+- Category drill-down with transactions and forecast impact.
+- Config page for income, budget, and category settings.
+- Settings page with password-confirmed account reset.
 - Smart suggestions based on spending patterns.
 - Cloud sync through Supabase.
 - Local storage fallback while the app is loading or if cloud sync is unavailable.
@@ -48,6 +54,7 @@ Local repository:
 - Hosting: GitHub Pages
 - Backend storage/auth: Supabase
 - Auth email SMTP: Brevo
+- Charts: Recharts
 
 ## File Overview
 
@@ -56,8 +63,12 @@ Local repository:
 - `src/components/DashboardRoot.jsx`: Root dashboard hierarchy.
 - `src/components/root/`: `CashFlowForecast`, `QuickSummary`, and `NavigationTabs`.
 - `src/components/modules/`: `Budgets`, `Planned`, `Trends`, and `CategoryDetail`.
+- `src/components/modules/ConfigPage.jsx`: Income, budget, and category settings.
+- `src/components/modules/SettingsPage.jsx`: Password-confirmed hard reset.
 - `src/components/forms/`: Reusable `ExpenseForm` and `BudgetForm`.
+- `src/components/charts/`: Reusable chart components.
 - `src/hooks/usePulseBudget.js`: Supabase auth, persistence, and state actions.
+- `src/services/financeRepository.js`: Supabase profile and transaction storage.
 - `src/lib/cashFlowEngine.js`: Single source of truth for balances, summaries, forecasts, trends, and category drill-downs.
 - `src/styles.css`: TailwindCSS entry point and shared component classes.
 - `public/app-config.js`: Supabase public project URL and anon key used by the React build.
@@ -74,16 +85,20 @@ Root dashboard:
 - `CashFlowForecast`: 12-month balance projection.
 - `QuickSummary`: income, bills, discretionary funds, planned funds.
 - `NavigationTabs`: `Overview`, `Budgets`, `Planned`, `Trends`.
+- Current tabs: `Overview`, `Budgets`, `Planned`, `Trends`, `Config`, `Settings`.
+- Real expenses can only be added from the dashboard Overview.
 
 Second-layer modules:
 
 - `Budgets`: committed vs remaining by category.
 - `Planned`: future allocations.
-- `Trends`: charting and projections for the selected category.
+- `Trends`: Recharts charting and projections for the selected category.
+- `Config`: monthly income, category budgets, and category add/remove settings.
+- `Settings`: account controls including password-confirmed hard reset.
 
 Third-layer drill-down:
 
-- `CategoryDetail`: category-specific transactions and forecast impact.
+- `CategoryDetail`: category-specific Supabase transactions and forecast impact.
 - The selected category drives contextual trend data.
 
 Data flow:
@@ -91,6 +106,8 @@ Data flow:
 - `cashFlowEngine(state)` is the single source of truth for calculated balances.
 - Components receive precomputed engine output instead of recalculating totals.
 - Forms are reusable and emit state updates through `usePulseBudget()` actions.
+- `finance_profiles` stores account configuration and planned items.
+- `finance_transactions` stores real expense transactions with `amount`, `category`, `date`, and `note`.
 
 ## Local Development
 
@@ -176,9 +193,11 @@ Run `supabase-schema.sql` in:
 The schema creates:
 
 - `public.finance_profiles`
+- `public.finance_transactions`
 - One JSONB `state` column per user
+- One transaction row per expense
 - Row-level security
-- Policies so each authenticated user can only read, create, and update their own finance profile
+- Policies so each authenticated user can only read, create, update, and delete their own finance data
 
 Current schema:
 
@@ -212,6 +231,50 @@ create policy "Users can update their own finance profile"
   to authenticated
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+create table if not exists public.finance_transactions (
+  id uuid primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  amount numeric not null check (amount >= 0),
+  category text not null,
+  date date not null,
+  note text not null default '',
+  created_at timestamptz not null default now()
+);
+
+create index if not exists finance_transactions_user_date_idx
+  on public.finance_transactions (user_id, date desc);
+
+alter table public.finance_transactions enable row level security;
+
+drop policy if exists "Users can read their own finance transactions" on public.finance_transactions;
+create policy "Users can read their own finance transactions"
+  on public.finance_transactions
+  for select
+  to authenticated
+  using (auth.uid() = user_id);
+
+drop policy if exists "Users can create their own finance transactions" on public.finance_transactions;
+create policy "Users can create their own finance transactions"
+  on public.finance_transactions
+  for insert
+  to authenticated
+  with check (auth.uid() = user_id);
+
+drop policy if exists "Users can update their own finance transactions" on public.finance_transactions;
+create policy "Users can update their own finance transactions"
+  on public.finance_transactions
+  for update
+  to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+drop policy if exists "Users can delete their own finance transactions" on public.finance_transactions;
+create policy "Users can delete their own finance transactions"
+  on public.finance_transactions
+  for delete
+  to authenticated
+  using (auth.uid() = user_id);
 ```
 
 ## Supabase Auth URL Settings
@@ -284,14 +347,23 @@ Authorize the blocked SMTP IP or relax SMTP IP restrictions.
 Preferred in-app reset:
 
 1. Sign in.
-2. Click `Clear account` in the dashboard.
-3. The app clears income, budgets, expenses, and planned expenses.
-4. The cleared zero state syncs to Supabase.
+2. Open the `Settings` tab.
+3. Enter your password under `Hard Reset Account`.
+4. Confirm reset.
+5. The app clears income, budgets, categories, planned expenses, transactions, and trends back to zero.
+6. The cleared state syncs to Supabase.
 
 Manual reset through Supabase SQL:
 
 ```sql
 delete from public.finance_profiles
+where user_id = (
+  select id
+  from auth.users
+  where email = 'mrhashimjaved.moj@gmail.com'
+);
+
+delete from public.finance_transactions
 where user_id = (
   select id
   from auth.users
@@ -362,11 +434,12 @@ When making changes:
 2. Confirm signed-out users only see the auth screen.
 3. Confirm signed-in users can see the dashboard.
 4. Confirm PKR formatting still displays correctly.
-5. Confirm `Clear account` resets to zero.
-6. Update this README with any relevant setup, architecture, deployment, troubleshooting, or workflow changes before finishing the task.
-7. Commit changes.
-8. Push to `main`.
-9. Check the live GitHub Pages URL.
+5. Confirm Config changes flow into dashboard/modules.
+6. Confirm Settings hard reset requires password and resets to zero.
+7. Update this README with any relevant setup, architecture, deployment, troubleshooting, or workflow changes before finishing the task.
+8. Commit changes.
+9. Push to `main`.
+10. Check the live GitHub Pages URL.
 
 ## Recent Important Commits
 

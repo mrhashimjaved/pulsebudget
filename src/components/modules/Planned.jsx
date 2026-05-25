@@ -1,48 +1,37 @@
-import { useState } from "react";
-import { categories } from "../../data/categories.js";
+import { ExpenseForm } from "../forms/ExpenseForm.jsx";
 import { currency } from "../../lib/formatters.js";
 
-export function Planned({ items, onAddPlanned }) {
-  const [form, setForm] = useState({ name: "", amount: "", category: "Savings" });
-
-  function update(field, value) {
-    setForm((current) => ({ ...current, [field]: value }));
-  }
-
-  function submit(event) {
-    event.preventDefault();
-    if (!form.name || !form.amount) return;
-    onAddPlanned(form);
-    setForm({ name: "", amount: "", category: form.category });
-  }
-
+export function Planned({ categories, engine, items, onAddPlanned }) {
   return (
     <section className="panel p-5">
       <div className="mb-4">
         <p className="section-title">Second layer</p>
         <h2 className="text-xl font-black">Planned</h2>
+        <p className="text-sm text-muted">Future allocations show up in the cash-flow forecast for their scheduled month.</p>
       </div>
-      <form className="mb-4 grid gap-3 md:grid-cols-[1fr_140px_160px_auto]" onSubmit={submit}>
-        <input value={form.name} onChange={(event) => update("name", event.target.value)} placeholder="Future allocation" />
-        <input value={form.amount} onChange={(event) => update("amount", event.target.value)} type="number" placeholder="Amount" />
-        <select value={form.category} onChange={(event) => update("category", event.target.value)}>
-          {categories.map((category) => (
-            <option key={category}>{category}</option>
-          ))}
-        </select>
-        <button className="primary-button" type="submit">
-          Allocate
-        </button>
-      </form>
+      <div className="mb-5 max-w-xl">
+        <ExpenseForm categories={categories} mode="planned" onSubmit={onAddPlanned} />
+      </div>
       <div className="grid gap-2">
         {items.length === 0 && <p className="rounded-md border border-dashed border-line p-4 text-sm text-muted">No planned allocations yet.</p>}
         {items.map((item) => (
           <div key={item.id} className="flex items-center justify-between rounded-md border border-line bg-canvas p-3">
             <div>
               <p className="font-black">{item.name}</p>
-              <p className="text-sm text-muted">{item.category}</p>
+              <p className="text-sm text-muted">
+                {item.category} | {item.date}
+              </p>
             </div>
             <span className="font-black text-river">{currency.format(item.amount)}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-5 grid gap-2 md:grid-cols-3">
+        {engine.projection.slice(0, 3).map((month) => (
+          <div key={month.month} className="rounded-md border border-line bg-white p-3">
+            <p className="text-xs font-black uppercase text-muted">{month.month}</p>
+            <p className="text-sm text-muted">Planned impact</p>
+            <p className="text-lg font-black text-coral">{currency.format(month.planned)}</p>
           </div>
         ))}
       </div>

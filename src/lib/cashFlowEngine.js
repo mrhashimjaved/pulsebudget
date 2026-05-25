@@ -1,4 +1,4 @@
-import { categories } from "../data/categories.js";
+import { categories as defaultCategories } from "../data/categories.js";
 import { monthKey, nextMonths } from "./formatters.js";
 
 function sum(entries, predicate = () => true) {
@@ -21,12 +21,13 @@ export function cashFlowEngine(state, options = {}) {
   const expenses = state.expenses || [];
   const planned = state.planned || [];
   const budgets = state.budgets || {};
+  const categories = state.categories?.length ? state.categories : defaultCategories;
 
   let runningBalance = openingBalance;
   const projection = forecastMonths.map((key, index) => {
     const monthIncome = income;
     const monthExpenses = monthlyTotal(expenses, key);
-    const monthPlanned = index === 0 ? sum(planned) : 0;
+    const monthPlanned = sum(planned, (item) => inMonth(item, key));
     const net = monthIncome - monthExpenses - monthPlanned;
     runningBalance += net;
 
@@ -41,7 +42,7 @@ export function cashFlowEngine(state, options = {}) {
   });
 
   const currentSpent = monthlyTotal(expenses, currentMonth);
-  const plannedTotal = sum(planned);
+  const plannedTotal = sum(planned, (item) => inMonth(item, currentMonth));
   const budgetedTotal = Object.values(budgets).reduce((total, value) => total + Number(value || 0), 0);
   const available = income - currentSpent - plannedTotal;
 
@@ -71,6 +72,7 @@ export function cashFlowEngine(state, options = {}) {
       income,
       bills: categorySummaries.find((item) => item.category === "Housing")?.committed || 0,
       discretionary: available,
+      savings: categorySummaries.find((item) => item.category === "Savings")?.committed || 0,
       spent: currentSpent,
       planned: plannedTotal,
       budgeted: budgetedTotal
@@ -94,7 +96,7 @@ export function cashFlowEngine(state, options = {}) {
           month: month.month,
           balanceImpact:
             monthlyTotal(categoryExpenses, month.month, category) +
-            (month.month === currentMonth ? sum(categoryPlanned) : 0)
+            sum(categoryPlanned, (item) => inMonth(item, month.month))
         }))
       };
     }

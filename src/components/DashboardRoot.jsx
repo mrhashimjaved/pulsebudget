@@ -1,8 +1,9 @@
-import { BudgetForm } from "./forms/BudgetForm.jsx";
 import { ExpenseForm } from "./forms/ExpenseForm.jsx";
 import { Budgets } from "./modules/Budgets.jsx";
 import { CategoryDetail } from "./modules/CategoryDetail.jsx";
+import { ConfigPage } from "./modules/ConfigPage.jsx";
 import { Planned } from "./modules/Planned.jsx";
+import { SettingsPage } from "./modules/SettingsPage.jsx";
 import { Trends } from "./modules/Trends.jsx";
 import { CashFlowForecast } from "./root/CashFlowForecast.jsx";
 import { NavigationTabs } from "./root/NavigationTabs.jsx";
@@ -21,9 +22,6 @@ export function DashboardRoot({ activeCategory, activeTab, budget, onSelectCateg
             <p className="text-sm text-muted">{status}</p>
           </div>
           <div className="flex items-center gap-2">
-            <button className="ghost-button" type="button" onClick={actions.clearAccount}>
-              Clear account
-            </button>
             <button className="primary-button" type="button" onClick={actions.signOut}>
               Sign out
             </button>
@@ -36,8 +34,6 @@ export function DashboardRoot({ activeCategory, activeTab, budget, onSelectCateg
           <CashFlowForecast projection={engine.projection} />
           <QuickSummary
             email={session?.user?.email}
-            income={state.income}
-            onIncomeChange={actions.updateIncome}
             summary={engine.quickSummary}
           />
         </section>
@@ -48,13 +44,14 @@ export function DashboardRoot({ activeCategory, activeTab, budget, onSelectCateg
           <div className="grid gap-5">
             {activeTab === "Overview" && (
               <>
+                <ExpenseForm categories={state.categories} onSubmit={actions.addExpense} />
                 <Budgets
                   categories={engine.categorySummaries}
                   compact
                   onSelectCategory={onSelectCategory}
                   onUpdateBudget={actions.updateBudget}
                 />
-                <Planned items={state.planned} onAddPlanned={actions.addPlanned} />
+                <Planned categories={state.categories} engine={engine} items={state.planned} onAddPlanned={actions.addPlanned} />
               </>
             )}
             {activeTab === "Budgets" && (
@@ -64,14 +61,22 @@ export function DashboardRoot({ activeCategory, activeTab, budget, onSelectCateg
                 onUpdateBudget={actions.updateBudget}
               />
             )}
-            {activeTab === "Planned" && <Planned items={state.planned} onAddPlanned={actions.addPlanned} />}
+            {activeTab === "Planned" && (
+              <Planned categories={state.categories} engine={engine} items={state.planned} onAddPlanned={actions.addPlanned} />
+            )}
             {activeTab === "Trends" && <Trends engine={engine} selectedCategory={activeCategory} />}
+            {activeTab === "Config" && (
+              <ConfigPage actions={actions} categorySummaries={engine.categorySummaries} state={state} />
+            )}
+            {activeTab === "Settings" && <SettingsPage onHardReset={actions.hardReset} status={status} />}
           </div>
 
           <aside className="grid content-start gap-5">
-            <ExpenseForm onAddExpense={actions.addExpense} />
-            <BudgetForm categories={engine.categorySummaries} onUpdateBudget={actions.updateBudget} />
-            <CategoryDetail detail={engine.categoryDetail(activeCategory)} onSelectCategory={onSelectCategory} />
+            <CategoryDetail
+              categoryOptions={state.categories}
+              detail={engine.categoryDetail(activeCategory)}
+              onSelectCategory={onSelectCategory}
+            />
           </aside>
         </section>
       </main>

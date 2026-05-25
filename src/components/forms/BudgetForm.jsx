@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { categories as allCategories } from "../../data/categories.js";
 
 export function BudgetForm({ categories, onUpdateBudget }) {
-  const [category, setCategory] = useState("Food");
+  const [category, setCategory] = useState(categories[0]?.category || "Food");
   const current = categories.find((item) => item.category === category);
 
   return (
@@ -11,8 +10,8 @@ export function BudgetForm({ categories, onUpdateBudget }) {
       <h3 className="mb-4 text-lg font-black">BudgetForm</h3>
       <div className="grid gap-3">
         <select value={category} onChange={(event) => setCategory(event.target.value)}>
-          {allCategories.map((item) => (
-            <option key={item}>{item}</option>
+          {categories.map((item) => (
+            <option key={item.category}>{item.category}</option>
           ))}
         </select>
         <input

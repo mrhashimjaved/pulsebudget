@@ -1,7 +1,6 @@
-import { categories } from "../../data/categories.js";
 import { currency, monthLabel } from "../../lib/formatters.js";
 
-export function CategoryDetail({ detail, onSelectCategory }) {
+export function CategoryDetail({ categoryOptions, detail, onSelectCategory }) {
   const totalImpact = detail.forecastImpact.reduce((total, item) => total + item.balanceImpact, 0);
 
   return (
@@ -12,7 +11,7 @@ export function CategoryDetail({ detail, onSelectCategory }) {
       </div>
 
       <select className="mb-4 w-full" value={detail.category} onChange={(event) => onSelectCategory(event.target.value)}>
-        {categories.map((category) => (
+        {categoryOptions.map((category) => (
           <option key={category}>{category}</option>
         ))}
       </select>

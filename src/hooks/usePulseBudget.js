@@ -1,19 +1,38 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { emptyBudgetMap, starterState } from "../data/categories.js";
+import { categories as defaultCategories, starterState, budgetMapFor } from "../data/categories.js";
 import { cashFlowEngine } from "../lib/cashFlowEngine.js";
 import { createId, monthKey } from "../lib/formatters.js";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient.js";
+import {
+  createProfile,
+  deleteAllTransactions,
+  getProfile,
+  getTransactions,
+  insertTransaction,
+  upsertProfile
+} from "../services/financeRepository.js";
 
-const STORAGE_KEY = "pulsebudget-state-v2";
-const TABLE = "finance_profiles";
+const STORAGE_KEY = "pulsebudget-state-v3";
 
 function normalizeState(value) {
+  const categories = value?.categories?.length ? value.categories : defaultCategories;
   return {
     ...starterState,
     ...value,
-    budgets: { ...emptyBudgetMap, ...(value?.budgets || {}) },
+    categories,
+    budgets: budgetMapFor(categories, value?.budgets || {}),
     expenses: value?.expenses || [],
     planned: value?.planned || []
+  };
+}
+
+function profileOnly(state) {
+  return {
+    income: state.income,
+    openingBalance: state.openingBalance,
+    categories: state.categories,
+    budgets: state.budgets,
+    planned: state.planned
   };
 }
 
@@ -21,7 +40,7 @@ function loadLocalState() {
   try {
     return normalizeState(JSON.parse(localStorage.getItem(STORAGE_KEY)));
   } catch {
-    return starterState;
+    return normalizeState(starterState);
   }
 }
 
@@ -40,11 +59,13 @@ export function usePulseBudget() {
 
   const setFinanceState = useCallback(
     (updater) => {
+      let nextState;
       setState((current) => {
-        const nextState = normalizeState(typeof updater === "function" ? updater(current) : updater);
+        nextState = normalizeState(typeof updater === "function" ? updater(current) : updater);
         persistLocal(nextState);
         return nextState;
       });
+      return nextState;
     },
     [persistLocal]
   );
@@ -52,12 +73,7 @@ export function usePulseBudget() {
   const syncCloud = useCallback(
     async (nextState = state) => {
       if (!supabase || !session?.user || !hasLoadedCloud.current) return;
-      const { error } = await supabase.from(TABLE).upsert({
-        user_id: session.user.id,
-        state: nextState,
-        updated_at: new Date().toISOString()
-      });
-
+      const { error } = await upsertProfile(session.user.id, profileOnly(nextState));
       setStatus(error ? "Cloud save failed. Local backup is still active." : `Cloud sync active for ${session.user.email}.`);
     },
     [session, state]
@@ -70,34 +86,37 @@ export function usePulseBudget() {
   const loadCloudState = useCallback(
     async (activeSession) => {
       if (!supabase || !activeSession?.user) return;
-      const { data, error } = await supabase
-        .from(TABLE)
-        .select("state")
-        .eq("user_id", activeSession.user.id)
-        .maybeSingle();
 
-      if (error) {
-        setStatus("Could not load cloud data. Local backup is still active.");
+      const [{ data: profile, error: profileError }, { data: transactions, error: transactionError }] = await Promise.all([
+        getProfile(activeSession.user.id),
+        getTransactions(activeSession.user.id)
+      ]);
+
+      if (profileError) {
+        setStatus("Could not load profile settings. Local backup is still active.");
         return;
       }
 
-      if (data?.state) {
-        const cloudState = normalizeState(data.state);
+      if (transactionError) {
+        setStatus("Profile loaded. Run the updated SQL schema to enable transaction-table sync.");
+      }
+
+      if (profile?.state) {
+        const cloudState = normalizeState({
+          ...profile.state,
+          expenses: transactionError ? profile.state.expenses || [] : transactions || []
+        });
         setState(cloudState);
         persistLocal(cloudState);
         hasLoadedCloud.current = true;
-        setStatus(`Cloud sync active for ${activeSession.user.email}.`);
+        if (!transactionError) setStatus(`Cloud sync active for ${activeSession.user.email}.`);
         return;
       }
 
       const freshState = normalizeState(starterState);
       setState(freshState);
       persistLocal(freshState);
-      const { error: insertError } = await supabase.from(TABLE).insert({
-        user_id: activeSession.user.id,
-        state: freshState,
-        updated_at: new Date().toISOString()
-      });
+      const { error: insertError } = await createProfile(activeSession.user.id, profileOnly(freshState));
       if (insertError) {
         setStatus("Could not create your cloud profile. Try refreshing the page.");
         return;
@@ -172,23 +191,56 @@ export function usePulseBudget() {
     await supabase?.auth.signOut();
   }
 
-  function clearAccount() {
-    setFinanceState(starterState);
-    setStatus("Account data cleared. Cloud sync will save the zero balance.");
+  async function hardReset(password) {
+    if (!session?.user?.email || !password) {
+      setStatus("Enter your password to confirm hard reset.");
+      return false;
+    }
+
+    setStatus("Confirming password...");
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email: session.user.email,
+      password
+    });
+
+    if (authError) {
+      setStatus("Password confirmation failed. Account was not reset.");
+      return false;
+    }
+
+    const freshState = normalizeState(starterState);
+    const { error: transactionError } = await deleteAllTransactions(session.user.id);
+    const { error: profileError } = await upsertProfile(session.user.id, profileOnly(freshState));
+
+    if (transactionError || profileError) {
+      setStatus("Reset could not finish. Check Supabase schema and try again.");
+      return false;
+    }
+
+    setFinanceState(freshState);
+    setStatus("Account reset complete. All budgets, expenses, and trends are back to zero.");
+    return true;
   }
 
-  function addExpense(expense) {
+  async function addExpense(expense) {
+    if (!session?.user) return;
+    const transaction = {
+      id: createId(),
+      date: expense.date || monthKey(new Date()),
+      category: expense.category,
+      amount: Number(expense.amount || 0),
+      note: expense.note || ""
+    };
+
+    const { data, error } = await insertTransaction(session.user.id, transaction);
+    if (error) {
+      setStatus("Could not save transaction. Run the updated Supabase schema if this is a new deploy.");
+      return;
+    }
+
     setFinanceState((current) => ({
       ...current,
-      expenses: [
-        ...current.expenses,
-        {
-          id: createId(),
-          date: monthKey(new Date()),
-          ...expense,
-          amount: Number(expense.amount || 0)
-        }
-      ]
+      expenses: [data || transaction, ...current.expenses]
     }));
   }
 
@@ -199,6 +251,7 @@ export function usePulseBudget() {
         ...current.planned,
         {
           id: createId(),
+          date: item.date || monthKey(new Date()),
           ...item,
           amount: Number(item.amount || 0)
         }
@@ -220,6 +273,32 @@ export function usePulseBudget() {
     setFinanceState((current) => ({ ...current, income: Number(value || 0) }));
   }
 
+  function addCategory(name) {
+    const category = name.trim();
+    if (!category) return;
+    setFinanceState((current) => {
+      if (current.categories.includes(category)) return current;
+      const categories = [...current.categories, category];
+      return {
+        ...current,
+        categories,
+        budgets: budgetMapFor(categories, current.budgets)
+      };
+    });
+  }
+
+  function removeCategory(category) {
+    setFinanceState((current) => {
+      const categories = current.categories.filter((item) => item !== category);
+      return {
+        ...current,
+        categories,
+        budgets: budgetMapFor(categories, current.budgets),
+        planned: current.planned.filter((item) => item.category !== category)
+      };
+    });
+  }
+
   return {
     engine,
     isLoading,
@@ -227,9 +306,11 @@ export function usePulseBudget() {
     state,
     status,
     actions: {
+      addCategory,
       addExpense,
       addPlanned,
-      clearAccount,
+      hardReset,
+      removeCategory,
       signIn,
       signOut,
       signUp,
