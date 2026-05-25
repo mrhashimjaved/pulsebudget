@@ -125,13 +125,20 @@ function setStorageStatus(mode, message) {
   copy.textContent = message;
 }
 
+function setAppVisibility(isSignedIn) {
+  document.querySelector("#auth-screen").classList.toggle("hidden", isSignedIn);
+  document.querySelector("#app-shell").classList.toggle("hidden", !isSignedIn);
+}
+
 function updateAuthUi() {
   const form = document.querySelector("#auth-form");
   const signOut = document.querySelector("#sign-out");
+  const signedInCopy = document.querySelector("#signed-in-copy");
 
   if (!isCloudConfigured) {
     form.classList.remove("hidden");
     signOut.classList.add("hidden");
+    setAppVisibility(false);
     setStorageStatus("local", "Add Supabase keys in app-config.js to enable permanent cloud storage.");
     return;
   }
@@ -139,10 +146,13 @@ function updateAuthUi() {
   if (activeSession) {
     form.classList.add("hidden");
     signOut.classList.remove("hidden");
+    setAppVisibility(true);
+    signedInCopy.textContent = `Signed in as ${activeSession.user.email}.`;
     setStorageStatus("cloud", `Cloud sync active for ${activeSession.user.email}.`);
   } else {
     form.classList.remove("hidden");
     signOut.classList.add("hidden");
+    setAppVisibility(false);
     setStorageStatus("local", "Sign in to sync this budget across devices.");
   }
 }
@@ -508,6 +518,11 @@ function bindEvents() {
 
     const email = document.querySelector("#auth-email").value.trim();
     const password = document.querySelector("#auth-password").value;
+    if (!email || !password) {
+      setStorageStatus("error", "Enter your email and password to continue.");
+      return;
+    }
+
     const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) setStorageStatus("error", error.message);
   });
@@ -520,6 +535,11 @@ function bindEvents() {
 
     const email = document.querySelector("#auth-email").value.trim();
     const password = document.querySelector("#auth-password").value;
+    if (!email || !password) {
+      setStorageStatus("error", "Enter an email and password to create an account.");
+      return;
+    }
+
     const { error } = await supabaseClient.auth.signUp({ email, password });
     if (error) {
       setStorageStatus("error", error.message);

@@ -9,7 +9,47 @@
     <script src="app-config.js"></script>
   </head>
   <body>
-    <div class="app-shell">
+    <section id="auth-screen" class="auth-screen" aria-labelledby="auth-title">
+      <div class="auth-card">
+        <div class="brand auth-brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M4 13.5 9 8l4 4 7-8" />
+              <path d="M4 19h16" />
+            </svg>
+          </div>
+          <div>
+            <h1 id="auth-title">PulseBudget</h1>
+            <p>Sign in to manage your finance dashboard</p>
+          </div>
+        </div>
+
+        <div class="auth-status-row">
+          <div>
+            <p class="eyebrow">Secure cloud access</p>
+            <p id="account-copy" class="account-copy">Sign in to sync this budget across devices.</p>
+          </div>
+          <span id="storage-status" class="status-dot local" title="Storage status"></span>
+        </div>
+
+        <form id="auth-form" class="auth-form">
+          <label>
+            Email
+            <input id="auth-email" type="email" autocomplete="email" placeholder="you@example.com" />
+          </label>
+          <label>
+            Password
+            <input id="auth-password" type="password" autocomplete="current-password" placeholder="At least 6 characters" />
+          </label>
+          <div class="auth-actions">
+            <button id="sign-in" class="primary-button" type="button">Sign in</button>
+            <button id="sign-up" class="ghost-button" type="button">Create account</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <div id="app-shell" class="app-shell hidden">
       <aside class="sidebar" aria-label="App summary">
         <div class="brand">
           <div class="brand-mark" aria-hidden="true">
@@ -44,24 +84,9 @@
               <p class="eyebrow">Cloud</p>
               <h3 id="account-title">Account</h3>
             </div>
-            <span id="storage-status" class="status-dot local" title="Storage status"></span>
           </div>
-          <p id="account-copy" class="account-copy">Local storage is active.</p>
-          <form id="auth-form" class="auth-form">
-            <label>
-              Email
-              <input id="auth-email" type="email" autocomplete="email" placeholder="you@example.com" />
-            </label>
-            <label>
-              Password
-              <input id="auth-password" type="password" autocomplete="current-password" placeholder="At least 6 characters" />
-            </label>
-            <div class="auth-actions">
-              <button id="sign-in" class="primary-button" type="button">Sign in</button>
-              <button id="sign-up" class="ghost-button" type="button">Create</button>
-            </div>
-          </form>
-          <button id="sign-out" class="ghost-button full-width hidden" type="button">Sign out</button>
+          <p id="signed-in-copy" class="account-copy">Cloud sync is active.</p>
+          <button id="sign-out" class="ghost-button full-width" type="button">Sign out</button>
         </section>
 
         <nav class="nav-links" aria-label="Dashboard sections">

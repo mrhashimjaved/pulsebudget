@@ -58,6 +58,41 @@ svg {
   min-height: 100vh;
 }
 
+.auth-screen {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 22px;
+}
+
+.auth-card {
+  display: grid;
+  width: min(100%, 430px);
+  gap: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: var(--shadow);
+  padding: 26px;
+  backdrop-filter: blur(18px);
+}
+
+.auth-brand {
+  align-items: flex-start;
+}
+
+.auth-brand h1 {
+  font-size: 1.8rem;
+}
+
+.auth-status-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+}
+
 .sidebar {
   position: sticky;
   top: 0;
@@ -127,6 +162,7 @@ svg {
 }
 
 .sidebar-panel label,
+.auth-form label,
 .form-grid label {
   display: grid;
   gap: 8px;
@@ -533,6 +569,11 @@ select:focus {
 }
 
 .hidden {
+  display: none;
+}
+
+.app-shell.hidden,
+.auth-screen.hidden {
   display: none;
 }
 
