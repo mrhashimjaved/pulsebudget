@@ -1,0 +1,4 @@
+window.PULSEBUDGET_CONFIG = {
+  supabaseUrl: "https://nvyggpjwbtymvkxufszi.supabase.co",
+  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52eWdncGp3YnR5bXZreHVmc3ppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3MDU3MDEsImV4cCI6MjA5NTI4MTcwMX0.9Y_Fqva6HP1S7cDRgQcXbD_GOEwx_WwFzwMmDPxdf3E"
+};

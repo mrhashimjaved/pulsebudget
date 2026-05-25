@@ -13,7 +13,7 @@ Local repository:
 ## Current Status
 
 - The app is deployed with GitHub Pages.
-- The frontend is static HTML, CSS, and JavaScript.
+- The frontend is a React app built with Vite and TailwindCSS.
 - Permanent storage is handled by Supabase.
 - Authentication is handled by Supabase Auth.
 - Confirmation emails are sent through Brevo SMTP.
@@ -39,9 +39,10 @@ Local repository:
 
 ## Tech Stack
 
-- HTML: `index.html`
-- CSS: `styles.css`
-- JavaScript: `app.js`
+- React: `src/`
+- Build tool: Vite
+- Styling: TailwindCSS
+- Legacy static files: `app.js` and `styles.css`
 - Runtime config: `app-config.js`
 - Database schema: `supabase-schema.sql`
 - Hosting: GitHub Pages
@@ -50,12 +51,46 @@ Local repository:
 
 ## File Overview
 
-- `index.html`: App layout, auth screen, dashboard markup.
-- `styles.css`: Responsive visual design and layout.
-- `app.js`: App state, rendering, Supabase auth, Supabase persistence, budget logic, trends, reset behavior.
-- `app-config.js`: Supabase public project URL and anon key.
+- `index.html`: Vite entry point.
+- `src/App.jsx`: App shell and auth gate.
+- `src/components/DashboardRoot.jsx`: Root dashboard hierarchy.
+- `src/components/root/`: `CashFlowForecast`, `QuickSummary`, and `NavigationTabs`.
+- `src/components/modules/`: `Budgets`, `Planned`, `Trends`, and `CategoryDetail`.
+- `src/components/forms/`: Reusable `ExpenseForm` and `BudgetForm`.
+- `src/hooks/usePulseBudget.js`: Supabase auth, persistence, and state actions.
+- `src/lib/cashFlowEngine.js`: Single source of truth for balances, summaries, forecasts, trends, and category drill-downs.
+- `src/styles.css`: TailwindCSS entry point and shared component classes.
+- `public/app-config.js`: Supabase public project URL and anon key used by the React build.
+- `app-config.js`: Legacy static app config retained for reference.
 - `supabase-schema.sql`: Supabase table and row-level security policies.
 - `.github/workflows/pages.yml`: GitHub Pages deployment workflow.
+
+## Interface Architecture
+
+The interface is organized in three layers inspired by Quicken Simplifi Flow.
+
+Root dashboard:
+
+- `CashFlowForecast`: 12-month balance projection.
+- `QuickSummary`: income, bills, discretionary funds, planned funds.
+- `NavigationTabs`: `Overview`, `Budgets`, `Planned`, `Trends`.
+
+Second-layer modules:
+
+- `Budgets`: committed vs remaining by category.
+- `Planned`: future allocations.
+- `Trends`: charting and projections for the selected category.
+
+Third-layer drill-down:
+
+- `CategoryDetail`: category-specific transactions and forecast impact.
+- The selected category drives contextual trend data.
+
+Data flow:
+
+- `cashFlowEngine(state)` is the single source of truth for calculated balances.
+- Components receive precomputed engine output instead of recalculating totals.
+- Forms are reusable and emit state updates through `usePulseBudget()` actions.
 
 ## Local Development
 
@@ -63,7 +98,8 @@ From the repository folder:
 
 ```powershell
 cd "D:\mhj___\github\PusleBudget\pulsebudget"
-python -m http.server 4173 --bind 127.0.0.1
+npm install
+npm run dev
 ```
 
 Open:
@@ -83,6 +119,7 @@ https://github.com/mrhashimjaved/pulsebudget.git
 ```
 
 The GitHub Pages workflow deploys whenever `main` is pushed.
+The workflow installs dependencies, runs `npm run build`, and uploads the generated `dist/` folder.
 
 Normal deploy flow:
 
@@ -113,9 +150,9 @@ Project URL:
 https://nvyggpjwbtymvkxufszi.supabase.co
 ```
 
-The public anon key is stored in `app-config.js`. This is acceptable for browser apps because the anon key is intentionally public. Do not commit or share the Supabase service role key, database password, or any private SMTP secrets.
+The public anon key is stored in `public/app-config.js`. This is acceptable for browser apps because the anon key is intentionally public. Do not commit or share the Supabase service role key, database password, or any private SMTP secrets.
 
-`app-config.js` format:
+`public/app-config.js` format:
 
 ```js
 window.PULSEBUDGET_CONFIG = {

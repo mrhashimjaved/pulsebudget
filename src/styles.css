@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply min-w-80 bg-canvas text-ink antialiased;
+    font-family:
+      Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  input,
+  select {
+    @apply min-h-11 rounded-md border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-river focus:ring-2 focus:ring-river/15;
+  }
+
+  button {
+    @apply transition;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply rounded-lg border border-line bg-panel shadow-soft;
+  }
+
+  .section-title {
+    @apply text-sm font-black uppercase tracking-normal text-muted;
+  }
+
+  .primary-button {
+    @apply inline-flex min-h-11 items-center justify-center rounded-md bg-ink px-4 text-sm font-black text-white hover:bg-ink/90;
+  }
+
+  .ghost-button {
+    @apply inline-flex min-h-11 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-river/10;
+  }
+
+  .tab-button {
+    @apply rounded-md px-3 py-2 text-sm font-black text-muted hover:bg-river/10 hover:text-river;
+  }
+
+  .tab-button-active {
+    @apply bg-river text-white hover:bg-river hover:text-white;
+  }
+}
