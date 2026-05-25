@@ -6,13 +6,13 @@ const isCloudConfigured = Boolean(cloudConfig.supabaseUrl && cloudConfig.supabas
 
 const currency = new Intl.NumberFormat("en-US", {
   style: "currency",
-  currency: "USD",
+  currency: "PKR",
   maximumFractionDigits: 0
 });
 
 const preciseCurrency = new Intl.NumberFormat("en-US", {
   style: "currency",
-  currency: "USD",
+  currency: "PKR",
   maximumFractionDigits: 2
 });
 
@@ -48,33 +48,19 @@ function escapeHtml(value) {
 }
 
 const starterState = {
-  income: 4200,
+  income: 0,
   budgets: {
-    Housing: 1350,
-    Food: 620,
-    Transport: 360,
-    Utilities: 280,
-    Shopping: 330,
-    Health: 220,
-    Leisure: 260,
-    Savings: 520
+    Housing: 0,
+    Food: 0,
+    Transport: 0,
+    Utilities: 0,
+    Shopping: 0,
+    Health: 0,
+    Leisure: 0,
+    Savings: 0
   },
-  expenses: [
-    { id: "e1", amount: 1250, category: "Housing", date: thisMonth + "-01", note: "Rent" },
-    { id: "e2", amount: 86.4, category: "Food", date: thisMonth + "-04", note: "Weekly groceries" },
-    { id: "e3", amount: 48, category: "Transport", date: thisMonth + "-06", note: "Fuel" },
-    { id: "e4", amount: 112, category: "Leisure", date: thisMonth + "-09", note: "Dinner out" },
-    { id: "e5", amount: 74.25, category: "Shopping", date: thisMonth + "-11", note: "Home supplies" },
-    { id: "e6", amount: 590, category: "Food", date: monthsBack(6)[0] + "-15", note: "Monthly food" },
-    { id: "e7", amount: 430, category: "Food", date: monthsBack(6)[1] + "-15", note: "Monthly food" },
-    { id: "e8", amount: 680, category: "Food", date: monthsBack(6)[2] + "-15", note: "Monthly food" },
-    { id: "e9", amount: 320, category: "Transport", date: monthsBack(6)[3] + "-16", note: "Monthly transport" },
-    { id: "e10", amount: 410, category: "Shopping", date: monthsBack(6)[4] + "-17", note: "Monthly shopping" }
-  ],
-  planned: [
-    { id: "p1", amount: 240, category: "Health", name: "Dental visit" },
-    { id: "p2", amount: 180, category: "Transport", name: "Car service" }
-  ]
+  expenses: [],
+  planned: []
 };
 
 let state = loadState();
@@ -203,6 +189,8 @@ async function loadCloudState() {
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } else {
+    state = structuredClone(starterState);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     await supabaseClient.from(SUPABASE_TABLE).insert({
       user_id: activeSession.user.id,
       state,
@@ -530,6 +518,7 @@ function bindEvents() {
     state = structuredClone(starterState);
     setupDefaults();
     render();
+    setStorageStatus("cloud", "Account data cleared. Cloud sync will save the zero balance.");
   });
 
   document.querySelector("#sign-in").addEventListener("click", async () => {
@@ -579,6 +568,9 @@ function bindEvents() {
   document.querySelector("#sign-out").addEventListener("click", async () => {
     if (supabaseClient) await supabaseClient.auth.signOut();
     activeSession = null;
+    state = structuredClone(starterState);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    render();
     updateAuthUi();
   });
 }
