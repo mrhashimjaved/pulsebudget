@@ -357,9 +357,10 @@ When making changes:
 3. Confirm signed-in users can see the dashboard.
 4. Confirm PKR formatting still displays correctly.
 5. Confirm `Clear account` resets to zero.
-6. Commit changes.
-7. Push to `main`.
-8. Check the live GitHub Pages URL.
+6. Update this README with any relevant setup, architecture, deployment, troubleshooting, or workflow changes before finishing the task.
+7. Commit changes.
+8. Push to `main`.
+9. Check the live GitHub Pages URL.
 
 ## Recent Important Commits
 
